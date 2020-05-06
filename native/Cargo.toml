@@ -16,3 +16,5 @@ neon-build = "0.4.0"
 
 [dependencies]
 neon = "0.4.0"
+dgraph-tonic = "0.5"
+tokio = { version = "0.2", features = ["macros"] }

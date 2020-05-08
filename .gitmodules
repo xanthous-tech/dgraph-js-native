@@ -1,3 +1,0 @@
-[submodule "native/neon-serde"]
-	path = native/neon-serde
-	url = https://github.com/GabrielCastro/neon-serde.git

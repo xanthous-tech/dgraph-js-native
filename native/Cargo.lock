@@ -139,7 +139,7 @@ dependencies = [
 [[package]]
 name = "dgraph-tonic"
 version = "0.5.0"
-source = "git+https://github.com/xanthous-tech/dgraph-tonic?branch=expose-traits#f37c8de1a22dec19e3259ba5327ac0f0b13b29d2"
+source = "git+https://github.com/xanthous-tech/dgraph-tonic?branch=expose-traits#f66c7d55bd448e3bf2df919ded021d029a464f4e"
 dependencies = [
  "async-trait",
  "failure",

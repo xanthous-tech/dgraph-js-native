@@ -7,6 +7,10 @@ build = "build.rs"
 edition = "2018"
 exclude = ["artifacts.json", "index.node"]
 
+[[bin]] # Bin to run the test client
+name = "test-client"
+path = "src/test_client.rs"
+
 [lib]
 name = "dgraph_js_native"
 crate-type = ["cdylib"]
@@ -16,5 +20,8 @@ neon-build = "0.4.0"
 
 [dependencies]
 neon = "0.4.0"
+neon-serde = { path = "neon-serde" }
+serde = "1.0.106"
+serde_derive = "1.0.106"
 dgraph-tonic = "0.5"
 tokio = { version = "0.2", features = ["macros"] }

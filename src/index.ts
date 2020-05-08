@@ -1,12 +1,12 @@
-import debug from "debug";
+import debug from 'debug';
 
-const log = debug("dgraph-js-native:index");
-import { Client } from "../native";
+const log = debug('dgraph-js-native:index');
+import { Client } from '../native';
 
 async function main() {
-  log("creating client");
+  log('creating client');
 
-  const client = new Client(["http://localhost:9080"]);
+  const client = new Client(['http://localhost:9080']);
   const query = `
   query user($userId: string) {
     var(func: uid($userId)) {
@@ -45,9 +45,18 @@ async function main() {
   }
   `;
 
-  const vars = { $userId: "0x1" };
+  const vars = { $userId: '0x1' };
 
-  log(client.queryWithVars(query, vars));
+  client.queryWithVars(query, vars, (err, result) => {
+    if (err) {
+      log(err);
+      return;
+    }
+
+    log(result);
+  });
+
+  // log(client.queryWithVars(query, vars));
 }
 
 main();

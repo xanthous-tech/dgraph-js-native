@@ -1,5 +1,3 @@
-pub mod json;
-
 use neon::prelude::*;
 
 use serde_json::Value;
@@ -7,35 +5,35 @@ use serde_json::Value;
 use std::str::from_utf8;
 use std::collections::HashMap;
 
-use dgraph_tonic::{DgraphError};
-use dgraph_tonic::sync::{Client, Query, TxnVariant, TxnState};
+use dgraph_tonic::{DgraphError, LazyClient, LazyDefaultChannel};
+use dgraph_tonic::sync::{Client, Query, ReadOnlyTxn};
 
-// struct QueryWithVarsTask {
-//   txn: TxnVariant<TxnState>,
-//   query: String,
-//   vars: HashMap<String, String>,
-// }
+struct QueryWithVarsTask {
+  txn: ReadOnlyTxn<LazyClient<LazyDefaultChannel>>,
+  query: String,
+  vars: HashMap<String, String>,
+}
 
-// impl Task for QueryWithVarsTask {
-//   type Output = Value;
-//   type Error = DgraphError;
-//   type JsEvent = JsValue;
+impl Task for QueryWithVarsTask {
+  type Output = Value;
+  type Error = DgraphError;
+  type JsEvent = JsValue;
 
-//   fn perform(&self) -> Result<Self::Output, Self::Error> {
-//     let response = self.txn.query_with_vars(self.query, self.vars)?;
+  fn perform(&self) -> Result<Self::Output, Self::Error> {
+    let response = self.txn.clone().query_with_vars(self.query.clone(), self.vars.clone())?;
 
-//     let json_str = from_utf8(&response.json).unwrap_or_default();
-//     let value: Value = serde_json::from_str(json_str).unwrap_or_default();
+    let json_str = from_utf8(&response.json).unwrap_or_default();
+    let value: Value = serde_json::from_str(json_str).unwrap_or_default();
 
-//     Ok(value)
-//   }
+    Ok(value)
+  }
 
-//   fn complete(self, mut cx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
-//     Ok(convert_value(cx, result.unwrap()).unwrap())
-//   }
-// }
+  fn complete(self, mut cx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
+    Ok(convert_value(&mut cx, &result.unwrap()).unwrap())
+  }
+}
 
-fn convert_value<'a>(ctx: &mut CallContext<'a, JsDgraphClient>, value: &Value) -> Result<Handle<'a, JsValue>, &'a str> {
+fn convert_value<'a>(ctx: &mut impl Context<'a>, value: &Value) -> Result<Handle<'a, JsValue>, &'a str> {
   match value {
     Value::Null => Ok(ctx.null().upcast()),
     Value::Bool(b) => Ok(ctx.boolean(*b).upcast()),
@@ -77,11 +75,12 @@ declare_types! {
     method queryWithVars(mut ctx) {
       let query = ctx.argument::<JsString>(0)?.value();
       let vars_obj = ctx.argument::<JsObject>(1)?;
+      let cb = ctx.argument::<JsFunction>(2)?;
 
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let mut txn = this.borrow(&guard).new_read_only_txn();
+      let txn = this.borrow(&guard).new_read_only_txn();
 
       let mut vars: HashMap<String, String> = HashMap::new();
       let keys_vec = vars_obj.get_own_property_names(&mut ctx)?.to_vec(&mut ctx)?;
@@ -103,18 +102,19 @@ declare_types! {
         vars.insert(key_string, value_string);
       }
 
-      let response = txn.query_with_vars(query, vars).unwrap();
+      // let response = txn.query_with_vars(query, vars).unwrap();
+      // let json_str = from_utf8(&response.json).unwrap_or_default();
+      // let value: Value = serde_json::from_str(json_str).unwrap_or_default();
 
-      let json_str = from_utf8(&response.json).unwrap_or_default();
-      let value: Value = serde_json::from_str(json_str).unwrap_or_default();
+      let task = QueryWithVarsTask {
+        txn: txn,
+        query: query,
+        vars: vars,
+      };
 
-      // let task = QueryWithVarsTask {
-      //   txn: txn,
-      //   query: query,
-      //   vars: HashMap::new(),
-      // };
+      task.schedule(cb);
 
-      Ok(convert_value(&mut ctx, &value).unwrap())
+      Ok(ctx.undefined().upcast())
     }
   }
 }

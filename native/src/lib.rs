@@ -1,62 +1,14 @@
+pub mod tasks;
+pub mod utils;
+
+use tasks::QueryWithVarsTask;
+
 use neon::prelude::*;
 
-use serde_json::Value;
-
-use std::str::from_utf8;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-use dgraph_tonic::{DgraphError, LazyClient, LazyDefaultChannel};
-use dgraph_tonic::sync::{Client, Query, ReadOnlyTxn};
-
-struct QueryWithVarsTask {
-  txn: ReadOnlyTxn<LazyClient<LazyDefaultChannel>>,
-  query: String,
-  vars: HashMap<String, String>,
-}
-
-impl Task for QueryWithVarsTask {
-  type Output = Value;
-  type Error = DgraphError;
-  type JsEvent = JsValue;
-
-  fn perform(&self) -> Result<Self::Output, Self::Error> {
-    let response = self.txn.clone().query_with_vars(self.query.clone(), self.vars.clone())?;
-
-    let json_str = from_utf8(&response.json).unwrap_or_default();
-    let value: Value = serde_json::from_str(json_str).unwrap_or_default();
-
-    Ok(value)
-  }
-
-  fn complete(self, mut cx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
-    Ok(convert_value(&mut cx, &result.unwrap()).unwrap())
-  }
-}
-
-fn convert_value<'a>(ctx: &mut impl Context<'a>, value: &Value) -> Result<Handle<'a, JsValue>, &'a str> {
-  match value {
-    Value::Null => Ok(ctx.null().upcast()),
-    Value::Bool(b) => Ok(ctx.boolean(*b).upcast()),
-    Value::Number(n) => Ok(ctx.number(n.as_f64().unwrap()).upcast()),
-    Value::String(s) => Ok(ctx.string(s).upcast()),
-    Value::Array(a) => {
-      let js_array = JsArray::new(ctx, a.len() as u32);
-      for (i, json_value) in a.iter().enumerate() {
-        let js_value = convert_value(ctx, json_value).unwrap();
-        js_array.set(ctx, i as u32, js_value).unwrap();
-      }
-      Ok(js_array.upcast())
-    },
-    Value::Object(o) => {
-      let js_object = JsObject::new(ctx);
-      for (_, key) in o.keys().enumerate() {
-        let js_value = convert_value(ctx, o.get(key).unwrap()).unwrap();
-        js_object.set(ctx, key.as_str(), js_value).unwrap();
-      }
-      Ok(js_object.upcast())
-    },
-  }
-}
+use dgraph_tonic::sync::Client;
 
 declare_types! {
   pub class JsDgraphClient for Client {
@@ -107,7 +59,7 @@ declare_types! {
       // let value: Value = serde_json::from_str(json_str).unwrap_or_default();
 
       let task = QueryWithVarsTask {
-        txn: txn,
+        txn: Arc::new(Mutex::new(txn)),
         query: query,
         vars: vars,
       };

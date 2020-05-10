@@ -7,16 +7,16 @@ use serde_json::Value;
 
 use crate::utils::convert_value;
 
-use dgraph_tonic::{DgraphError, LazyClient, LazyDefaultChannel};
-use dgraph_tonic::sync::{Query, ReadOnlyTxn};
+use dgraph_tonic::{DgraphError};
+use dgraph_tonic::sync::{Query};
 
-pub struct QueryWithVarsTask {
-  pub txn: Arc<Mutex<ReadOnlyTxn<LazyClient<LazyDefaultChannel>>>>,
+pub struct QueryWithVarsTask<Q: Query> {
+  pub txn: Arc<Mutex<Q>>,
   pub query: String,
   pub vars: HashMap<String, String>,
 }
 
-impl Task for QueryWithVarsTask {
+impl<Q: 'static + Query> Task for QueryWithVarsTask<Q> {
   type Output = Value;
   type Error = DgraphError;
   type JsEvent = JsValue;

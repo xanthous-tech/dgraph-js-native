@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use neon::prelude::*;
 
 use serde_json::Value;
@@ -25,4 +27,30 @@ pub fn convert_value<'a>(ctx: &mut impl Context<'a>, value: &Value) -> Result<Ha
       Ok(js_object.upcast())
     },
   }
+}
+
+pub fn convert_js_vars_object<'a>(ctx: &mut impl Context<'a>, vars_obj: Handle<'a, JsObject>) -> Result<HashMap<String, String>, neon::result::Throw> {
+  // NOTE: this operation filters out everything that is not Map<string, string> in JS.
+
+  let mut vars: HashMap<String, String> = HashMap::new();
+  let keys_vec = vars_obj.get_own_property_names(ctx)?.to_vec(ctx)?;
+
+  for key in &keys_vec {
+    if !key.is_a::<JsString>() {
+      continue;
+    }
+
+    let key_string = key.downcast::<JsString>().unwrap().value();
+    let value = vars_obj.get(ctx, key_string.as_str())?;
+
+    if !value.is_a::<JsString>() {
+      continue;
+    }
+
+    let value_string = value.downcast::<JsString>().unwrap().value();
+
+    vars.insert(key_string, value_string);
+  }
+
+  Ok(vars)
 }

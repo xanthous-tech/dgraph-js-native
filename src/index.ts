@@ -3,7 +3,7 @@ import debug from 'debug';
 const log = debug('dgraph-js-native:index');
 import { Client } from '../native';
 
-async function main() {
+function main(): void {
   log('creating client');
 
   const client = new Client(['http://localhost:9080']);
@@ -47,7 +47,9 @@ async function main() {
 
   const vars = { $userId: '0x1' };
 
-  client.queryWithVars(query, vars, (err, result) => {
+  const txn = client.newQueryTxn(false);
+
+  txn.queryWithVars(query, vars, (err, result) => {
     if (err) {
       log(err);
       return;

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use neon::prelude::*;
@@ -9,19 +8,18 @@ use crate::utils::convert_value;
 use dgraph_tonic::{DgraphError};
 use dgraph_tonic::sync::{Query};
 
-pub struct QueryWithVarsTask<Q> where Q: Query {
+pub struct QueryTask<Q> where Q: Query {
   pub txn: Arc<Mutex<Q>>,
   pub query: String,
-  pub vars: HashMap<String, String>,
 }
 
-impl<Q> Task for QueryWithVarsTask<Q> where Q: Query + 'static {
+impl<Q> Task for QueryTask<Q> where Q: Query + 'static {
   type Output = Value;
   type Error = DgraphError;
   type JsEvent = JsValue;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
-    let response = self.txn.lock().unwrap().query_with_vars(self.query.clone(), self.vars.clone())?;
+    let response = self.txn.lock().unwrap().query(self.query.clone())?;
     let value: Value = serde_json::from_slice(&response.json).unwrap_or_default();
     Ok(value)
   }

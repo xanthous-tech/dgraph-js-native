@@ -24,8 +24,7 @@ impl<Q: 'static + Query> Task for QueryWithVarsTask<Q> {
   fn perform(&self) -> Result<Self::Output, Self::Error> {
     let response = self.txn.lock().unwrap().query_with_vars(self.query.clone(), self.vars.clone())?;
 
-    let json_str = from_utf8(&response.json).unwrap_or_default();
-    let value: Value = serde_json::from_str(json_str).unwrap_or_default();
+    let value: Value = response.try_into_owned().unwrap_or_default();
 
     Ok(value)
   }

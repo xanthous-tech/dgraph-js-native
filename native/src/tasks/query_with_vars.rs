@@ -1,6 +1,5 @@
-use std::str::from_utf8;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex};
 
 use neon::prelude::*;
 use serde_json::Value;
@@ -11,7 +10,7 @@ use dgraph_tonic::{DgraphError};
 use dgraph_tonic::sync::{Query};
 
 pub struct QueryWithVarsTask<Q: Query> {
-  pub txn: Arc<Mutex<Q>>,
+  pub txn: Mutex<Q>,
   pub query: String,
   pub vars: HashMap<String, String>,
 }

@@ -6,7 +6,7 @@ use tasks::QueryWithVarsTask;
 use neon::prelude::*;
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex};
 
 use dgraph_tonic::sync::Client;
 
@@ -59,7 +59,7 @@ declare_types! {
       // let value: Value = serde_json::from_str(json_str).unwrap_or_default();
 
       let task = QueryWithVarsTask {
-        txn: Arc::new(Mutex::new(txn)),
+        txn: Mutex::new(txn),
         query: query,
         vars: vars,
       };

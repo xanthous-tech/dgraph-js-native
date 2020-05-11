@@ -23,6 +23,8 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+    - name: setup rustfmt
+      run: rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:

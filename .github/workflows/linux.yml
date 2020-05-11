@@ -34,7 +34,7 @@ jobs:
       env:
         NODE_PRE_GYP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Publish to NPM
-      run: npm publish --access=public
+      run: echo "//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}" > .npmrc && npm publish --access=public
       if: ${{ matrix.node-version == '12.x' }}
       env:
         NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # You need to set this in your repo settings

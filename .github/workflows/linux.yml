@@ -12,9 +12,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-      # - macos-latest
-      # - ubuntu-latest
-      # - windows-latest
 
     strategy:
       matrix:
@@ -39,3 +36,4 @@ jobs:
     - run: yarn build --if-present
     - run: yarn upload-binary
     - run: npm publish --access=public
+      if: ${{ matrix.node-version == '12.x' }}

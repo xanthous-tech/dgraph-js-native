@@ -27,12 +27,6 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-    - name: Publish to npm
-      uses: pascalgn/npm-publish-action@1.2.0
-      env: # More info about the environment variables in the README
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Leave this as is, it's automatically generated
-        NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # You need to set this in your repo settings
     - run: yarn
     - run: yarn build --if-present
     - run: yarn upload-binary
-    # - run: yarn publish --access=public

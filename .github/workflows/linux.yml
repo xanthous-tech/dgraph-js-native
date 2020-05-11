@@ -19,20 +19,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
     - name: Use Rust Stable
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-    - run: yarn
-    - run: npm run upload-binary
-    - name: Publish to npm
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: install NPM dependencies and build native binary
+      run: yarn
+    - name: Package native binary and upload to github
+      run: npm run upload-binary
+      env:
+        NODE_PRE_GYP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Publish to NPM
       uses: pascalgn/npm-publish-action@1.2.0
       env: # More info about the environment variables in the README
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Leave this as is, it's automatically generated
         NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }} # You need to set this in your repo settings
-    - run: npm publish --access=public
       if: ${{ matrix.node-version == '12.x' }}

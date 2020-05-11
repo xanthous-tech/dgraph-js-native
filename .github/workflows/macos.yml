@@ -19,13 +19,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
     - name: Use Rust Stable
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-    - run: yarn
-    - run: npm run upload-binary
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: install NPM dependencies and build native binary
+      run: yarn
+    - name: Package native binary and upload to github
+      run: npm run upload-binary
+      env:
+        NODE_PRE_GYP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

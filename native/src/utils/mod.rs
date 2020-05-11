@@ -29,6 +29,18 @@ pub fn convert_value<'a>(ctx: &mut impl Context<'a>, value: &Value) -> Result<Ha
   }
 }
 
+pub fn convert_uids_map<'a>(ctx: &mut impl Context<'a>, uids_map: &HashMap<String, String>) -> Result<Handle<'a, JsObject>, neon::result::Throw> {
+  let obj = ctx.empty_object();
+
+  for (key, value) in uids_map {
+    let key_js_string = ctx.string(key);
+    let value_js_string = ctx.string(value);
+    obj.set(ctx, key_js_string, value_js_string)?;
+  }
+
+  Ok(obj)
+}
+
 pub fn convert_js_vars_object<'a>(ctx: &mut impl Context<'a>, vars_obj: Handle<'a, JsObject>) -> Result<HashMap<String, String>, neon::result::Throw> {
   // NOTE: this operation filters out everything that is not Map<string, string> in JS.
 

@@ -4,14 +4,15 @@ use std::sync::{Arc, Mutex};
 
 use neon::prelude::*;
 
+use dgraph_tonic::Mutation;
 use dgraph_tonic::sync::{Client};
 
 pub mod classes;
 pub mod tasks;
 pub mod utils;
 
-use classes::{DgraphClientWrapper, ReadOnlyQueryTxnWrapper, BestEffortQueryTxnWrapper};
-use tasks::{QueryWithVarsTask, QueryTask};
+use classes::{DgraphClientWrapper, ReadOnlyQueryTxnWrapper, BestEffortQueryTxnWrapper, MutatedTxnWrapper};
+use tasks::{QueryWithVarsTask, QueryTask, MutateTask, CommitTask};
 use utils::convert_js_vars_object;
 
 declare_types! {
@@ -39,6 +40,106 @@ declare_types! {
         Ok(JsReadOnlyTxn::new(&mut ctx, vec![this])?.upcast())
       }
     }
+
+    method newMutateTxn(mut ctx) {
+      let this: Handle<JsDgraphClient> = ctx.this();
+      Ok(JsMutatedTxn::new(&mut ctx, vec![this])?.upcast())
+    }
+  }
+
+  pub class JsMutatedTxn for MutatedTxnWrapper {
+    init(mut ctx) {
+      let client = ctx.argument::<JsDgraphClient>(0)?;
+      let guard = ctx.lock();
+      let client = client.borrow(&guard);
+
+      Ok(MutatedTxnWrapper { txn: Arc::new(Mutex::new(Some(client.new_mutated_txn()))) })
+    }
+
+    method mutate(mut ctx) {
+      let mutation = ctx.argument::<JsMutation>(0)?;
+      let cb = ctx.argument::<JsFunction>(1)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+      let mu = mutation.borrow(&guard).clone();
+
+      let task = MutateTask {
+        txn,
+        mu,
+      };
+
+      task.schedule(cb);
+
+      Ok(ctx.undefined().upcast())
+    }
+
+    method commit(mut ctx) {
+      let cb = ctx.argument::<JsFunction>(0)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+
+      let task = CommitTask {
+        txn,
+      };
+
+      task.schedule(cb);
+
+      Ok(ctx.undefined().upcast())
+    }
+  }
+
+  pub class JsMutation for Mutation {
+    init(_) {
+      Ok(Mutation::new())
+    }
+
+    method setSetJson(mut ctx) {
+      let set_json_string = ctx.argument::<JsString>(0)?.value();
+
+      let mut this = ctx.this();
+      let guard = ctx.lock();
+      this.borrow_mut(&guard).set_json = set_json_string.into_bytes();
+
+      Ok(ctx.undefined().upcast())
+    }
+
+    method setSetNquads(mut ctx) {
+      let set_nquads_string = ctx.argument::<JsString>(0)?.value();
+
+      let mut this = ctx.this();
+      let guard = ctx.lock();
+      this.borrow_mut(&guard).set_nquads = set_nquads_string.into_bytes();
+
+      Ok(ctx.undefined().upcast())
+    }
+
+    method setDeleteJson(mut ctx) {
+      let delete_json_string = ctx.argument::<JsString>(0)?.value();
+
+      let mut this = ctx.this();
+      let guard = ctx.lock();
+      this.borrow_mut(&guard).delete_json = delete_json_string.into_bytes();
+
+      Ok(ctx.undefined().upcast())
+    }
+
+    method setDelNquads(mut ctx) {
+      let del_nquads_string = ctx.argument::<JsString>(0)?.value();
+
+      let mut this = ctx.this();
+      let guard = ctx.lock();
+      this.borrow_mut(&guard).del_nquads = del_nquads_string.into_bytes();
+
+      Ok(ctx.undefined().upcast())
+    }
   }
 
   pub class JsReadOnlyTxn for ReadOnlyQueryTxnWrapper {
@@ -58,10 +159,11 @@ declare_types! {
       let guard = ctx.lock();
 
       let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
 
       let task = QueryTask {
-        txn: txn,
-        query: query,
+        txn,
+        query,
       };
 
       task.schedule(cb);
@@ -78,11 +180,13 @@ declare_types! {
       let guard = ctx.lock();
 
       let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+      let vars = convert_js_vars_object(&mut ctx, vars_obj).unwrap();
 
       let task = QueryWithVarsTask {
-        txn: txn,
-        query: query,
-        vars: convert_js_vars_object(&mut ctx, vars_obj).unwrap(),
+        txn,
+        query,
+        vars,
       };
 
       task.schedule(cb);
@@ -108,10 +212,11 @@ declare_types! {
       let guard = ctx.lock();
 
       let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
 
       let task = QueryTask {
-        txn: txn,
-        query: query,
+        txn,
+        query,
       };
 
       task.schedule(cb);
@@ -128,11 +233,13 @@ declare_types! {
       let guard = ctx.lock();
 
       let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+      let vars = convert_js_vars_object(&mut ctx, vars_obj).unwrap();
 
       let task = QueryWithVarsTask {
-        txn: txn,
-        query: query,
-        vars: convert_js_vars_object(&mut ctx, vars_obj).unwrap(),
+        txn,
+        query,
+        vars,
       };
 
       task.schedule(cb);
@@ -146,6 +253,8 @@ register_module!(mut ctx, {
   ctx.export_class::<JsDgraphClient>("Client")?;
   ctx.export_class::<JsReadOnlyTxn>("ReadOnlyTxn")?;
   ctx.export_class::<JsBestEffortTxn>("BestEffortTxn")?;
+  ctx.export_class::<JsMutatedTxn>("MutatedTxn")?;
+  ctx.export_class::<JsMutation>("Mutation")?;
 
   Ok(())
 });

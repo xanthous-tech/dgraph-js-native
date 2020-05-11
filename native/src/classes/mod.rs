@@ -1,6 +1,6 @@
 pub(crate) mod client;
-pub(crate) mod query_txn;
+pub(crate) mod txn;
 
 pub use client::DgraphClientWrapper;
-pub use query_txn::{QueryTxnWrapper, ReadOnlyQueryTxnWrapper, BestEffortQueryTxnWrapper};
+pub use txn::{QueryTxnWrapper, MutateTxnWrapper, ReadOnlyQueryTxnWrapper, BestEffortQueryTxnWrapper, MutatedTxnWrapper};
 

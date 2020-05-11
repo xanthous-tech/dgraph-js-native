@@ -1,7 +1,7 @@
 import debug from 'debug';
 
 const log = debug('dgraph-js-native:index');
-import { Client } from '../native';
+import { Client, Mutation } from '../native';
 
 function main(): void {
   log('creating client');
@@ -47,9 +47,9 @@ function main(): void {
 
   const vars = { $userId: '0x1' };
 
-  const txn = client.newQueryTxn(false);
+  const queryTxn = client.newQueryTxn(false);
 
-  txn.queryWithVars(query, vars, (err, result) => {
+  queryTxn.queryWithVars(query, vars, (err, result) => {
     if (err) {
       log(err);
       return;
@@ -58,7 +58,27 @@ function main(): void {
     log(result);
   });
 
-  // log(client.queryWithVars(query, vars));
+  const mutateTxn = client.newMutateTxn();
+
+  const mutation = new Mutation();
+  mutation.setSetNquads(`
+    _:a <dgraph.type> "WORKSPACE" .
+    _:a <name> "workspace from dgraph-js-native" .
+  `);
+
+  mutateTxn.mutate(mutation, (err, result) => {
+    if (err) {
+      log(err);
+      return;
+    }
+
+    log(result);
+    mutateTxn.commit((err) => {
+      if (err) {
+        log(err);
+      }
+    });
+  });
 }
 
 main();

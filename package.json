@@ -1,6 +1,6 @@
 {
   "name": "dgraph-js-native",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "dGraph JS Native Client",
   "main": "lib/index.js",
   "author": "Simon Liang <simon@x-tech.io>",
@@ -14,6 +14,14 @@
     "native/index.d.ts",
     "lib"
   ],
+  "binary": {
+    "module_name": "index",
+    "host": "https://github.com/xanthous-tech/dgraph-js-native/releases/download/",
+    "remote_path": "{version}",
+    "package_name": "{node_abi}-{platform}-{arch}.tar.gz",
+    "module_path": "./native",
+    "pkg_path": "."
+  },
   "scripts": {
     "clean": "rimraf lib",
     "build:typescript": "tsc",
@@ -22,11 +30,16 @@
     "format": "prettier --write",
     "dev": "npm run build && npm run build:typescript && npm run start",
     "start": "DEBUG=dgraph-js-native:* node .",
-    "postinstall": "npm run build",
-    "build": "neon build"
+    "postinstall": "npm run node-pre-gyp -- install --fallback-to-build=false || npm run build -- --release && npm run build:typescript",
+    "node-pre-gyp": "node-pre-gyp",
+    "build": "neon build",
+    "package": "npm run node-pre-gyp -- package",
+    "upload-binary": "npm run package && node-pre-gyp-github publish"
   },
   "dependencies": {
-    "debug": "^4.1.1"
+    "debug": "^4.1.1",
+    "node-pre-gyp": "amilajack/node-pre-gyp",
+    "node-pre-gyp-github": "^1.4.3"
   },
   "devDependencies": {
     "@types/debug": "^4.1.5",

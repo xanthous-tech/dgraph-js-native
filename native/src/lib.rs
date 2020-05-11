@@ -1,10 +1,11 @@
 extern crate neon;
 
+use std::string::String;
 use std::sync::{Arc, Mutex};
 
 use neon::prelude::*;
 
-use dgraph_tonic::Mutation;
+use dgraph_tonic::{Mutation, Operation};
 use dgraph_tonic::sync::{Client};
 
 pub mod classes;
@@ -44,6 +45,33 @@ declare_types! {
     method newMutateTxn(mut ctx) {
       let this: Handle<JsDgraphClient> = ctx.this();
       Ok(JsMutatedTxn::new(&mut ctx, vec![this])?.upcast())
+    }
+
+    method alter(mut ctx) {
+      let this: Handle<JsDgraphClient> = ctx.this();
+      let operation = ctx.argument::<JsOperation>(0)?;
+      let guard = ctx.lock();
+
+      let payload = this.borrow(&guard).alter(operation.borrow(&guard).clone());
+      let data = payload.data;
+
+      Ok(ctx.string(String::from_utf8(data).unwrap()).upcast())
+    }
+  }
+
+  pub class JsOperation for Operation {
+    init(_) {
+      Ok(Operation { ..Default::default() })
+    }
+
+    method setSchema(mut ctx) {
+      let schema_string = ctx.argument::<JsString>(0)?.value();
+
+      let mut this = ctx.this();
+      let guard = ctx.lock();
+      this.borrow_mut(&guard).schema = schema_string;
+
+      Ok(ctx.undefined().upcast())
     }
   }
 

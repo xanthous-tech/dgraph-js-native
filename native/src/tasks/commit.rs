@@ -15,7 +15,7 @@ impl<M> Task for CommitTask<M> where M: Mutate + 'static {
   type JsEvent = JsUndefined;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
-    std::mem::replace(&mut *self.txn.lock().unwrap(), None).unwrap().commit()
+    self.txn.lock().unwrap().take().unwrap().commit()
   }
 
   fn complete(self, mut ctx: TaskContext, _result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {

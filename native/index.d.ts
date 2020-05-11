@@ -1,4 +1,8 @@
 declare namespace DgraphJsNative {
+  export class Operation {
+    setSchema(schema: string): void;
+  }
+
   export class Mutation {
     setSetJson(jsonString: string): void;
     setSetNquads(nquadsString: string): void;
@@ -20,6 +24,7 @@ declare namespace DgraphJsNative {
     constructor(servers: string[]);
     newQueryTxn(isBestEffort: boolean): QueryTxn;
     newMutateTxn(): MutateTxn;
+    alter(op: Operation): string;
   }
 
   export class ReadOnlyTxn implements QueryTxn {}

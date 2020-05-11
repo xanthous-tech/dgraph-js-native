@@ -28,5 +28,4 @@ jobs:
       with:
         toolchain: stable
     - run: yarn
-    - run: yarn build --if-present
-    - run: yarn upload-binary
+    - run: npm run upload-binary

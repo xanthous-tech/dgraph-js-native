@@ -20,7 +20,7 @@ TODO: Example
 
 # Benchmark
 
-TODO. I just got the benchmark test going, and I am going to post a benchmark repo that works soon.
+[Benchmark Test Repo](https://github.com/xanthous-tech/dgraph-js-native-benchmarks)
 
 # Sponsor
 

@@ -1,4 +1,5 @@
 import { QueryTxn, MutateTxn, Mutation, Response } from '../native';
+import { READ_ONLY_TXN } from './errors';
 
 export type TxnOptions = {
   readOnly?: boolean;
@@ -52,7 +53,7 @@ export class Txn {
         });
       });
     } else {
-      return Promise.reject(new Error('txn is read-only'));
+      return Promise.reject(READ_ONLY_TXN);
     }
   }
 
@@ -70,7 +71,7 @@ export class Txn {
         });
       });
     } else {
-      return Promise.reject(new Error('txn is read-only'));
+      return Promise.reject(READ_ONLY_TXN);
     }
   }
 
@@ -88,7 +89,7 @@ export class Txn {
         });
       });
     } else {
-      return Promise.reject(new Error('txn is read-only'));
+      return Promise.reject(READ_ONLY_TXN);
     }
   }
 

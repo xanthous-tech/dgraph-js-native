@@ -1,4 +1,9 @@
 declare namespace DgraphJsNative {
+  export class Response {
+    getJson(): any;
+    getUidsMap(): { [key: string]: string };
+  }
+
   export class Operation {
     setSchema(schema: string): void;
   }
@@ -11,13 +16,14 @@ declare namespace DgraphJsNative {
   }
 
   export interface QueryTxn {
-    query(query: string, cb: (err: any, result: any) => void): void;
-    queryWithVars(query: string, vars: { [key: string]: string }, cb: (err: any, result: any) => void): void;
+    query(query: string, cb: (err: Error, result: Response) => void): void;
+    queryWithVars(query: string, vars: { [key: string]: string }, cb: (err: Error, result: Response) => void): void;
   }
 
-  export interface MutateTxn {
-    mutate(mutation: Mutation, cb: (err: any, result: any) => void): void;
-    commit(cb: (err: any) => void): void;
+  export interface MutateTxn extends QueryTxn {
+    mutate(mutation: Mutation, cb: (err: Error, result: Response) => void): void;
+    commit(cb: (err: Error) => void): void;
+    discard(cb: (err: Error) => void): void;
   }
 
   export class Client {

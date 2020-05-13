@@ -5,18 +5,18 @@ use neon::prelude::*;
 use dgraph_tonic::{DgraphError};
 use dgraph_tonic::sync::{Mutate};
 
-pub struct CommitTask<M> where M: Mutate {
+pub struct DiscardTask<M> where M: Mutate {
   pub txn: Arc<Mutex<Option<M>>>,
 }
 
-impl<M> Task for CommitTask<M> where M: Mutate + 'static {
+impl<M> Task for DiscardTask<M> where M: Mutate + 'static {
   type Output = ();
   type Error = DgraphError;
   type JsEvent = JsUndefined;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
     match self.txn.lock().unwrap().take() {
-      Some(t) => t.commit(),
+      Some(t) => t.discard(),
       None => Err(DgraphError::EmptyTxn)
     }
   }
@@ -24,7 +24,8 @@ impl<M> Task for CommitTask<M> where M: Mutate + 'static {
   fn complete(self, mut ctx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
     match result {
       Ok(_) => Ok(ctx.undefined()),
-      Err(e) => ctx.throw_error(format!("CommitTask Error - {:?}", e))
+      Err(DgraphError::EmptyTxn) => Ok(ctx.undefined()),
+      Err(e) => ctx.throw_error(format!("DiscardTask Error - {:?}", e))
     }
   }
 }

@@ -1,5 +1,4 @@
-import { Mutation, Operation } from '../native';
-export { Mutation, Operation };
+import { Mutation, Operation, Response } from '../native';
+export { Mutation, Operation, Response };
 export { DgraphClient } from './client';
-export { QueryTransaction } from './query_txn';
-export { MutateTransaction } from './mutate_txn';
+export { Txn } from './txn';

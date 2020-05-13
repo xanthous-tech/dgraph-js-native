@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use crate::js::client::JsDgraphClient;
 use crate::classes::BestEffortQueryTxnWrapper;
 use crate::tasks::{QueryWithVarsTask, QueryTask};
-use crate::utils::convert_js_vars_object;
+use crate::utils::jsobject_to_hashmap;
 
 declare_types! {
   pub class JsBestEffortTxn for BestEffortQueryTxnWrapper {
@@ -14,7 +14,7 @@ declare_types! {
       let guard = ctx.lock();
       let client = client.borrow(&guard);
 
-      Ok(BestEffortQueryTxnWrapper { txn: Arc::new(Mutex::new(client.new_best_effort_txn())) })
+      Ok(BestEffortQueryTxnWrapper { txn: Arc::new(Mutex::new(Some(client.new_best_effort_txn()))) })
     }
 
     method query(mut ctx) {
@@ -47,7 +47,7 @@ declare_types! {
 
       let txn = this.borrow(&guard).txn.clone();
       Arc::downgrade(&txn);
-      let vars = convert_js_vars_object(&mut ctx, vars_obj).unwrap();
+      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
 
       let task = QueryWithVarsTask {
         txn,

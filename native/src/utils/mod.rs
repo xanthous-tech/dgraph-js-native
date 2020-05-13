@@ -4,32 +4,32 @@ use neon::prelude::*;
 
 use serde_json::Value;
 
-pub fn convert_value<'a>(ctx: &mut impl Context<'a>, value: &Value) -> Result<Handle<'a, JsValue>, &'a str> {
+pub fn convert_value<'a>(ctx: &mut impl Context<'a>, value: &Value) -> Handle<'a, JsValue> {
   match value {
-    Value::Null => Ok(ctx.null().upcast()),
-    Value::Bool(b) => Ok(ctx.boolean(*b).upcast()),
-    Value::Number(n) => Ok(ctx.number(n.as_f64().unwrap()).upcast()),
-    Value::String(s) => Ok(ctx.string(s).upcast()),
+    Value::Null => ctx.null().upcast(),
+    Value::Bool(b) => ctx.boolean(*b).upcast(),
+    Value::Number(n) => ctx.number(n.as_f64().unwrap()).upcast(),
+    Value::String(s) => ctx.string(s).upcast(),
     Value::Array(a) => {
       let js_array = JsArray::new(ctx, a.len() as u32);
       for (i, json_value) in a.iter().enumerate() {
-        let js_value = convert_value(ctx, json_value).unwrap();
+        let js_value = convert_value(ctx, json_value);
         js_array.set(ctx, i as u32, js_value).unwrap();
       }
-      Ok(js_array.upcast())
+      js_array.upcast()
     },
     Value::Object(o) => {
       let js_object = JsObject::new(ctx);
       for (_, key) in o.keys().enumerate() {
-        let js_value = convert_value(ctx, o.get(key).unwrap()).unwrap();
+        let js_value = convert_value(ctx, o.get(key).unwrap());
         js_object.set(ctx, key.as_str(), js_value).unwrap();
       }
-      Ok(js_object.upcast())
+      js_object.upcast()
     },
   }
 }
 
-pub fn convert_uids_map<'a>(ctx: &mut impl Context<'a>, uids_map: &HashMap<String, String>) -> Result<Handle<'a, JsObject>, neon::result::Throw> {
+pub fn hashmap_to_jsobject<'a>(ctx: &mut impl Context<'a>, uids_map: &HashMap<String, String>) -> Result<Handle<'a, JsObject>, neon::result::Throw> {
   let obj = ctx.empty_object();
 
   for (key, value) in uids_map {
@@ -41,7 +41,7 @@ pub fn convert_uids_map<'a>(ctx: &mut impl Context<'a>, uids_map: &HashMap<Strin
   Ok(obj)
 }
 
-pub fn convert_js_vars_object<'a>(ctx: &mut impl Context<'a>, vars_obj: Handle<'a, JsObject>) -> Result<HashMap<String, String>, neon::result::Throw> {
+pub fn jsobject_to_hashmap<'a>(ctx: &mut impl Context<'a>, vars_obj: Handle<'a, JsObject>) -> Result<HashMap<String, String>, neon::result::Throw> {
   // NOTE: this operation filters out everything that is not Map<string, string> in JS.
 
   let mut vars: HashMap<String, String> = HashMap::new();

@@ -1,6 +1,6 @@
 {
   "name": "dgraph-js-native",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "dGraph JS Native Client",
   "main": "lib/index.js",
   "author": "Simon Liang <simon@x-tech.io>",
@@ -10,7 +10,6 @@
     "url": "git+https://github.com/xanthous-tech/dgraph-js-native.git"
   },
   "files": [
-    "native/index.node",
     "native/index.d.ts",
     "lib"
   ],
@@ -30,7 +29,7 @@
     "format": "prettier --write",
     "dev": "npm run build && npm run build:typescript && npm run start",
     "start": "DEBUG=dgraph-js-native:* node .",
-    "postinstall": "npm run node-pre-gyp -- install --fallback-to-build=false || npm run build -- --release && npm run build:typescript",
+    "postinstall": "npm run node-pre-gyp -- install --update-binary --fallback-to-build=false || npm run build -- --release && npm run build:typescript",
     "node-pre-gyp": "node-pre-gyp",
     "build": "neon build",
     "package": "npm run node-pre-gyp -- package",
@@ -38,8 +37,7 @@
   },
   "dependencies": {
     "debug": "^4.1.1",
-    "node-pre-gyp": "amilajack/node-pre-gyp",
-    "node-pre-gyp-github": "^1.4.3"
+    "node-pre-gyp": "amilajack/node-pre-gyp"
   },
   "devDependencies": {
     "@types/debug": "^4.1.5",
@@ -50,6 +48,7 @@
     "husky": "^4.2.5",
     "lint-staged": "^10.2.2",
     "neon-cli": "^0.4.0",
+    "node-pre-gyp-github": "^1.4.3",
     "prettier": "^2.0.5",
     "ts-node": "^8.10.1",
     "typescript": "^3.8.3"

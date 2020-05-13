@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 use crate::js::client::JsDgraphClient;
 use crate::js::mutation::JsMutation;
 use crate::classes::MutatedTxnWrapper;
-use crate::tasks::{MutateTask, CommitTask};
+use crate::tasks::{MutateTask, CommitTask, DiscardTask, QueryTask, QueryWithVarsTask};
+use crate::utils::jsobject_to_hashmap;
 
 declare_types! {
   pub class JsMutatedTxn for MutatedTxnWrapper {
@@ -15,6 +16,24 @@ declare_types! {
       let client = client.borrow(&guard);
 
       Ok(MutatedTxnWrapper { txn: Arc::new(Mutex::new(Some(client.new_mutated_txn()))) })
+    }
+
+    method discard(mut ctx) {
+      let cb = ctx.argument::<JsFunction>(0)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+
+      let task = DiscardTask {
+        txn,
+      };
+
+      task.schedule(cb);
+
+      Ok(ctx.undefined().upcast())
     }
 
     method mutate(mut ctx) {
@@ -49,6 +68,49 @@ declare_types! {
 
       let task = CommitTask {
         txn,
+      };
+
+      task.schedule(cb);
+
+      Ok(ctx.undefined().upcast())
+    }
+
+    method query(mut ctx) {
+      let query = ctx.argument::<JsString>(0)?.value();
+      let cb = ctx.argument::<JsFunction>(1)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+
+      let task = QueryTask {
+        txn,
+        query,
+      };
+
+      task.schedule(cb);
+
+      Ok(ctx.undefined().upcast())
+    }
+
+    method queryWithVars(mut ctx) {
+      let query = ctx.argument::<JsString>(0)?.value();
+      let vars_obj = ctx.argument::<JsObject>(1)?;
+      let cb = ctx.argument::<JsFunction>(2)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let txn = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn);
+      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
+
+      let task = QueryWithVarsTask {
+        txn,
+        query,
+        vars,
       };
 
       task.schedule(cb);

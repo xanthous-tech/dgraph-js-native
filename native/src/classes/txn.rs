@@ -4,12 +4,12 @@ use dgraph_tonic::{LazyClient, LazyDefaultChannel};
 use dgraph_tonic::sync::{Query, Mutate, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
 
 pub struct QueryTxnWrapper<Q: Query> {
-  pub txn: Arc<Mutex<Q>>,
+  pub txn: Arc<Mutex<Option<Q>>>,
 }
 
 impl<Q> QueryTxnWrapper<Q> where Q: Query {
   pub fn new(txn: Q) -> QueryTxnWrapper<Q> {
-    QueryTxnWrapper { txn: Arc::new(Mutex::new(txn)) }
+    QueryTxnWrapper { txn: Arc::new(Mutex::new(Some(txn))) }
   }
 }
 

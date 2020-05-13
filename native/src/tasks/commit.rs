@@ -18,7 +18,10 @@ impl<M> Task for CommitTask<M> where M: Mutate + 'static {
     self.txn.lock().unwrap().take().unwrap().commit()
   }
 
-  fn complete(self, mut ctx: TaskContext, _result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
-    Ok(ctx.undefined())
+  fn complete(self, mut ctx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
+    match result {
+      Ok(_) => Ok(ctx.undefined()),
+      Err(e) => ctx.throw_error(format!("CommitTask Error - {:?}", e))
+    }
   }
 }

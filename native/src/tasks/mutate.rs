@@ -18,11 +18,18 @@ impl<M> Task for MutateTask<M> where M: Mutate + 'static {
   type JsEvent = JsValue;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
-    self.txn.lock().unwrap().as_mut().unwrap().mutate(self.mu.clone())
+    let mut mutex_guard = self.txn.lock().unwrap();
+    let txn = mutex_guard.as_mut();
+    match txn {
+      Some(t) => t.mutate(self.mu.clone()),
+      None => Err(DgraphError::EmptyTxn)
+    }
   }
 
   fn complete(self, mut ctx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
-    let response = result.unwrap();
-    Ok(convert_uids_map(&mut ctx, &response.uids).unwrap().upcast())
+    match result {
+      Ok(x) => Ok(convert_uids_map(&mut ctx, &x.uids).unwrap().upcast()),
+      Err(e) => ctx.throw_error(format!("MutateTask Error - {:?}", e))
+    }
   }
 }

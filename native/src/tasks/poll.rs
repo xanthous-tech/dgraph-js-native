@@ -26,14 +26,14 @@ impl Task for PollTask {
 
   fn complete(self, mut ctx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
     match result {
-      Ok(responseEvent) => match responseEvent.result {
+      Ok(resp_event) => match resp_event.result {
         Ok(x) => {
           let json_js_string = ctx.string(std::str::from_utf8(&x.json).unwrap()).upcast();
           let uids_map = hashmap_to_jsobject(&mut ctx, &x.uids)?.upcast();
 
           let obj = ctx.empty_object();
-          let resp_id = ctx.string(responseEvent.resp_id);
-          obj.set(&mut ctx, "id", resp_id);
+          let resp_id = ctx.string(resp_event.resp_id);
+          obj.set(&mut ctx, "id", resp_id)?;
 
           let response = JsResponse::new::<_, JsValue, _>(
             &mut ctx,
@@ -43,7 +43,7 @@ impl Task for PollTask {
             ],
           )?;
 
-          obj.set(&mut ctx, "response", response);
+          obj.set(&mut ctx, "response", response)?;
 
           Ok(obj.upcast())
         },

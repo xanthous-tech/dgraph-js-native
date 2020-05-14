@@ -1,7 +1,7 @@
 use neon::prelude::*;
 
 use std::sync::mpsc;
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex};
 
 use crate::js::client::JsDgraphClient;
 use crate::js::mutation::JsMutation;

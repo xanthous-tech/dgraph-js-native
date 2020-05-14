@@ -32,13 +32,19 @@ export class Txn {
           return;
         }
 
-        console.error(err);
-        this.startPolling();
-        return;
+        // disconnect
+        throw err;
       }
 
       if (this.responses[event.id]) {
-        this.responses[event.id][0](event.response);
+        if (event.error) {
+          this.responses[event.id][1](new Error(event.error));
+        } else {
+          if (event.response) {
+            this.responses[event.id][0](event.response);
+          }
+        }
+
         delete this.responses[event.id];
       }
 

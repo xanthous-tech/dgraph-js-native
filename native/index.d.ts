@@ -1,7 +1,8 @@
 declare namespace DgraphJsNative {
   export interface ResponseEvent {
     id: string;
-    response: Response;
+    response?: Response;
+    error?: string;
   }
 
   export class Response {

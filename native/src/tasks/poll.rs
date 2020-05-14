@@ -47,7 +47,14 @@ impl Task for PollTask {
 
           Ok(obj.upcast())
         },
-        Err(e) => ctx.throw_error(format!("Txn Error - {:?}", e))
+        Err(e) => {
+          let obj = ctx.empty_object();
+          let resp_id = ctx.string(resp_event.resp_id);
+          let error = ctx.string(format!("Txn Error - {:?}", e));
+          obj.set(&mut ctx, "id", resp_id)?;
+          obj.set(&mut ctx, "error", error)?;
+          Ok(obj.upcast())
+        },
       },
       Err(RecvTimeoutError::Timeout) => ctx.throw_error(format!("Poll Timeout Error - {:?}", RecvTimeoutError::Timeout)),
       Err(RecvTimeoutError::Disconnected) => ctx.throw_error(format!("Channel Disconnect Error - {:?}", RecvTimeoutError::Disconnected)),

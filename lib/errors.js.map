@@ -1,1 +1,1 @@
-{"version":3,"file":"errors.js","sourceRoot":"","sources":["../src/errors.ts"],"names":[],"mappings":";;AAAa,QAAA,kCAAkC,GAAG,IAAI,KAAK,CAAC,8CAA8C,CAAC,CAAC"}
+{"version":3,"file":"errors.js","sourceRoot":"","sources":["../src/errors.ts"],"names":[],"mappings":";;AAAa,QAAA,kCAAkC,GAAG,IAAI,KAAK,CAAC,8CAA8C,CAAC,CAAC;AAC/F,QAAA,aAAa,GAAG,IAAI,KAAK,CAAC,kBAAkB,CAAC,CAAC"}

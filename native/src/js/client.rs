@@ -1,10 +1,10 @@
 use neon::prelude::*;
 
-use dgraph_tonic::sync::{Client};
+use dgraph_tonic::{Client};
 
 use crate::classes::DgraphClientWrapper;
 
-use super::operation::JsOperation;
+// use super::operation::JsOperation;
 use super::txn::{JsMutatedTxn, JsReadOnlyTxn, JsBestEffortTxn};
 
 declare_types! {
@@ -38,15 +38,15 @@ declare_types! {
       Ok(JsMutatedTxn::new(&mut ctx, vec![this])?.upcast())
     }
 
-    method alter(mut ctx) {
-      let this: Handle<JsDgraphClient> = ctx.this();
-      let operation = ctx.argument::<JsOperation>(0)?;
-      let guard = ctx.lock();
+    // method alter(mut ctx) {
+    //   let this: Handle<JsDgraphClient> = ctx.this();
+    //   let operation = ctx.argument::<JsOperation>(0)?;
+    //   let guard = ctx.lock();
 
-      let payload = this.borrow(&guard).alter(operation.borrow(&guard).clone());
-      let data = payload.data;
+    //   let payload = this.borrow(&guard).alter(operation.borrow(&guard).clone());
+    //   let data = payload.data;
 
-      Ok(ctx.string(String::from_utf8(data).unwrap()).upcast())
-    }
+    //   Ok(ctx.string(String::from_utf8(data).unwrap()).upcast())
+    // }
   }
 }

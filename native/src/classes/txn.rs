@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use dgraph_tonic::{LazyClient, LazyDefaultChannel};
-use dgraph_tonic::sync::{Query, Mutate, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
+use dgraph_tonic::{Query, Mutate, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
 
 pub struct QueryTxnWrapper<Q: Query> {
   pub txn: Arc<Mutex<Option<Q>>>,

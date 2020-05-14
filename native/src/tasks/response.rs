@@ -1,31 +1,24 @@
-use std::sync::{Arc, Mutex};
-
 use neon::prelude::*;
 
-use dgraph_tonic::{Response, DgraphError};
-use dgraph_tonic::sync::{Query};
+use std::sync::Mutex;
+
+use dgraph_tonic::{DgraphError};
+use dgraph_tonic::{Response};
 
 use crate::js::JsResponse;
 use crate::utils::hashmap_to_jsobject;
 
-pub struct QueryTask<Q> where Q: Query {
-  pub txn: Arc<Mutex<Option<Q>>>,
-  pub query: String,
+pub struct ResponseTask {
+  pub response: Mutex<Option<Result<Response, DgraphError>>>,
 }
 
-impl<Q> Task for QueryTask<Q> where Q: Query + 'static {
+impl Task for ResponseTask {
   type Output = Response;
   type Error = DgraphError;
   type JsEvent = JsResponse;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
-    let mut mutex_guard = self.txn.lock().unwrap();
-    let txn = mutex_guard.as_mut();
-
-    match txn {
-      Some(t) => t.query(self.query.clone()),
-      None => Err(DgraphError::EmptyTxn)
-    }
+    self.response.lock().unwrap().take().unwrap()
   }
 
   fn complete(self, mut ctx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
@@ -42,7 +35,7 @@ impl<Q> Task for QueryTask<Q> where Q: Query + 'static {
           ],
         )
       },
-      Err(e) => ctx.throw_error(format!("QueryTask Error - {:?}", e))
+      Err(e) => ctx.throw_error(format!("ResponseTask Error - {:?}", e))
     }
   }
 }

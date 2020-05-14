@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::js::client::JsDgraphClient;
 use crate::classes::BestEffortQueryTxnWrapper;
-use crate::tasks::{QueryWithVarsTask, QueryTask};
+use crate::tasks::ResponseTask;
 use crate::utils::jsobject_to_hashmap;
 
 declare_types! {
@@ -24,15 +24,27 @@ declare_types! {
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn = this.borrow(&guard).txn.clone();
-      Arc::downgrade(&txn);
+      let txn_arc_mutex = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn_arc_mutex);
 
-      let task = QueryTask {
-        txn,
-        query,
-      };
+      smol::run(async {
+        use dgraph_tonic::Query;
+        use dgraph_tonic::DgraphError;
 
-      task.schedule(cb);
+        let mut mutex_guard = txn_arc_mutex.lock().unwrap();
+        let txn = mutex_guard.as_mut();
+
+        let response = match txn {
+          Some(t) => t.query(query.clone()).await,
+          None => Err(DgraphError::EmptyTxn)
+        };
+
+        let task = ResponseTask {
+          response: Mutex::new(Some(response)),
+        };
+
+        task.schedule(cb);
+      });
 
       Ok(ctx.undefined().upcast())
     }
@@ -42,20 +54,32 @@ declare_types! {
       let vars_obj = ctx.argument::<JsObject>(1)?;
       let cb = ctx.argument::<JsFunction>(2)?;
 
+      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
+
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn = this.borrow(&guard).txn.clone();
-      Arc::downgrade(&txn);
-      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
+      let txn_arc_mutex = this.borrow(&guard).txn.clone();
+      Arc::downgrade(&txn_arc_mutex);
 
-      let task = QueryWithVarsTask {
-        txn,
-        query,
-        vars,
-      };
+      smol::run(async {
+        use dgraph_tonic::Query;
+        use dgraph_tonic::DgraphError;
 
-      task.schedule(cb);
+        let mut mutex_guard = txn_arc_mutex.lock().unwrap();
+        let txn = mutex_guard.as_mut();
+
+        let response = match txn {
+          Some(t) => t.query_with_vars(query.clone(), vars.clone()).await,
+          None => Err(DgraphError::EmptyTxn)
+        };
+
+        let task = ResponseTask {
+          response: Mutex::new(Some(response)),
+        };
+
+        task.schedule(cb);
+      });
 
       Ok(ctx.undefined().upcast())
     }

@@ -1,14 +1,14 @@
 use dgraph_tonic::{Operation, Payload, LazyClient, LazyDefaultChannel};
-use dgraph_tonic::sync::{Client, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
+use dgraph_tonic::{Client, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
 
 pub struct DgraphClientWrapper {
   pub client: Client,
 }
 
 impl DgraphClientWrapper {
-  pub fn alter(&self, op: Operation) -> Payload {
-    self.client.alter(op).expect("client alter failed")
-  }
+  // pub fn alter(&self, op: Operation) -> Payload {
+  //   self.client.alter(op).expect("client alter failed")
+  // }
 
   pub fn new_read_only_txn(&self) -> ReadOnlyTxn<LazyClient<LazyDefaultChannel>> {
     self.client.new_read_only_txn()

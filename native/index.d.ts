@@ -1,4 +1,10 @@
 declare namespace DgraphJsNative {
+  export interface ResponseEvent {
+    id: string;
+    response?: Response;
+    error?: string;
+  }
+
   export class Response {
     getJson(): any;
     getUidsMap(): { [key: string]: string };
@@ -16,14 +22,15 @@ declare namespace DgraphJsNative {
   }
 
   export interface QueryTxn {
-    query(query: string, cb: (err: Error, result: Response) => void): void;
-    queryWithVars(query: string, vars: { [key: string]: string }, cb: (err: Error, result: Response) => void): void;
+    query(query: string): string;
+    queryWithVars(query: string, vars: { [key: string]: string }): string;
+    poll(cb: (err: Error, resp: ResponseEvent) => void): void;
   }
 
   export interface MutateTxn extends QueryTxn {
-    mutate(mutation: Mutation, cb: (err: Error, result: Response) => void): void;
-    commit(cb: (err: Error) => void): void;
-    discard(cb: (err: Error) => void): void;
+    mutate(mutation: Mutation): string;
+    commit(): string;
+    discard(): string;
   }
 
   export class Client {

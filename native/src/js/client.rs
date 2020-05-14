@@ -1,6 +1,6 @@
 use neon::prelude::*;
 
-use dgraph_tonic::sync::{Client};
+use dgraph_tonic::{Client};
 
 use crate::classes::DgraphClientWrapper;
 

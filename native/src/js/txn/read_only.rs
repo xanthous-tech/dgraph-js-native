@@ -1,10 +1,11 @@
 use neon::prelude::*;
 
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 use crate::js::client::JsDgraphClient;
 use crate::classes::ReadOnlyQueryTxnWrapper;
-use crate::tasks::{QueryTask, QueryWithVarsTask};
+use crate::tasks::PollTask;
 use crate::utils::jsobject_to_hashmap;
 
 declare_types! {
@@ -14,45 +15,50 @@ declare_types! {
       let guard = ctx.lock();
       let client = client.borrow(&guard);
 
-      Ok(ReadOnlyQueryTxnWrapper { txn: Arc::new(Mutex::new(Some(client.new_read_only_txn()))) })
+      let (tx, rx) = mpsc::channel();
+
+      Ok(ReadOnlyQueryTxnWrapper {
+        txn: Arc::new(Mutex::new(Some(client.new_read_only_txn()))),
+        response_tx: tx,
+        response_rx: Arc::new(Mutex::new(rx)),
+      })
     }
 
     method query(mut ctx) {
       let query = ctx.argument::<JsString>(0)?.value();
-      let cb = ctx.argument::<JsFunction>(1)?;
 
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn = this.borrow(&guard).txn.clone();
-      Arc::downgrade(&txn);
+      let txn_id = this.borrow(&guard).query(query.clone());
 
-      let task = QueryTask {
-        txn,
-        query,
-      };
-
-      task.schedule(cb);
-
-      Ok(ctx.undefined().upcast())
+      Ok(ctx.string(txn_id).upcast())
     }
 
     method queryWithVars(mut ctx) {
       let query = ctx.argument::<JsString>(0)?.value();
       let vars_obj = ctx.argument::<JsObject>(1)?;
-      let cb = ctx.argument::<JsFunction>(2)?;
+
+      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
 
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn = this.borrow(&guard).txn.clone();
-      Arc::downgrade(&txn);
-      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
+      let txn_id = this.borrow(&guard).query_with_vars(query.clone(), vars.clone());
 
-      let task = QueryWithVarsTask {
-        txn,
-        query,
-        vars,
+      Ok(ctx.string(txn_id).upcast())
+    }
+
+    method poll(mut ctx) {
+      let cb = ctx.argument::<JsFunction>(0)?;
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let rx = this.borrow(&guard).response_rx.clone();
+      Arc::downgrade(&rx);
+
+      let task = PollTask {
+        rx,
       };
 
       task.schedule(cb);

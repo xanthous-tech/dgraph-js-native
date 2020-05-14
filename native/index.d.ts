@@ -15,6 +15,7 @@ declare namespace DgraphJsNative {
   }
 
   export class Mutation {
+    clearSetList(): void;
     setSetJson(jsonString: string): void;
     setSetNquads(nquadsString: string): void;
     setDeleteJson(deleteJsonString: string): void;
@@ -23,11 +24,13 @@ declare namespace DgraphJsNative {
 
   export interface QueryTxn {
     query(query: string): string;
-    queryWithVars(query: string, vars: { [key: string]: string }): string;
+    queryWithVars(query: string, vars: { [key: string]: any }): string;
     poll(cb: (err: Error, resp: ResponseEvent) => void): void;
   }
 
   export interface MutateTxn extends QueryTxn {
+    upsert(query: string, mutation: Mutation): string;
+    upsertWithVars(query: string, vars: { [key: string]: any }, mutation: Mutation): string;
     mutate(mutation: Mutation): string;
     commit(): string;
     discard(): string;

@@ -1,6 +1,6 @@
 [package]
 name = "dgraph-js-native"
-version = "0.1.0"
+version = "0.0.4"
 authors = ["Simon Liang <simon@x-tech.io>"]
 license = "MIT"
 build = "build.rs"
@@ -23,8 +23,7 @@ neon = "0.4.0"
 serde = "1.0.106"
 serde_derive = "1.0.106"
 serde_json = "1.0.52"
-dgraph-tonic = { git = "https://github.com/xanthous-tech/dgraph-tonic", branch = "expose-traits", features = ["sync"] }
-# dgraph-tonic = { version = "0.5.1", features = ["sync"] }
-# tokio = { version = "0.2", features = ["macros"] }
-smol = { version = "0.1.4", features = ["tokio02"] }
+dgraph-tonic = { git = "https://github.com/xanthous-tech/dgraph-tonic", branch = "expose-traits" }
+tokio = { version = "0.2", features = ["macros", "sync"] }
+tokio-global = "0.4.0"
 nanoid = "0.3.0"

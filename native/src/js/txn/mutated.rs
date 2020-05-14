@@ -1,7 +1,9 @@
 use neon::prelude::*;
 
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex as StdMutex};
+
+use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 
 use crate::js::client::JsDgraphClient;
 use crate::js::mutation::JsMutation;
@@ -16,12 +18,12 @@ declare_types! {
       let guard = ctx.lock();
       let client = client.borrow(&guard);
 
-      let (tx, rx) = mpsc::channel();
+      let (tx, rx) = mpsc::unbounded_channel();
 
       Ok(MutatedTxnWrapper {
         txn: Arc::new(Mutex::new(Some(client.new_mutated_txn()))),
         response_tx: tx,
-        response_rx: Arc::new(Mutex::new(rx)),
+        response_rx: Arc::new(StdMutex::new(rx)),
       })
     }
 
@@ -30,6 +32,15 @@ declare_types! {
       let guard = ctx.lock();
 
       let txn_id = this.borrow(&guard).discard();
+
+      Ok(ctx.string(txn_id).upcast())
+    }
+
+    method commit(mut ctx) {
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let txn_id = this.borrow(&guard).commit();
 
       Ok(ctx.string(txn_id).upcast())
     }
@@ -47,11 +58,34 @@ declare_types! {
       Ok(ctx.string(txn_id).upcast())
     }
 
-    method commit(mut ctx) {
+    method upsert(mut ctx) {
+      let query = ctx.argument::<JsString>(0)?.value();
+      let mutation = ctx.argument::<JsMutation>(1)?;
+
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn_id = this.borrow(&guard).commit();
+      let mu = mutation.borrow(&guard).clone();
+
+      let txn_id = this.borrow(&guard).upsert(query.clone(), mu.clone());
+
+      Ok(ctx.string(txn_id).upcast())
+    }
+
+    method upsertWithVars(mut ctx) {
+      let query = ctx.argument::<JsString>(0)?.value();
+
+      let vars_obj = ctx.argument::<JsObject>(1)?;
+      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
+
+      let mutation = ctx.argument::<JsMutation>(2)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let mu = mutation.borrow(&guard).clone();
+
+      let txn_id = this.borrow(&guard).upsert_with_vars(query.clone(), vars.clone(), mu.clone());
 
       Ok(ctx.string(txn_id).upcast())
     }

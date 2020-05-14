@@ -1,7 +1,9 @@
 use neon::prelude::*;
 
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex as StdMutex};
+
+use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 
 use crate::js::client::JsDgraphClient;
 use crate::classes::BestEffortQueryTxnWrapper;
@@ -15,12 +17,12 @@ declare_types! {
       let guard = ctx.lock();
       let client = client.borrow(&guard);
 
-      let (tx, rx) = mpsc::channel();
+      let (tx, rx) = mpsc::unbounded_channel();
 
       Ok(BestEffortQueryTxnWrapper {
         txn: Arc::new(Mutex::new(Some(client.new_best_effort_txn()))),
         response_tx: tx,
-        response_rx: Arc::new(Mutex::new(rx)),
+        response_rx: Arc::new(StdMutex::new(rx)),
       })
     }
 

@@ -8,6 +8,14 @@ declare_types! {
       Ok(Mutation::new())
     }
 
+    method clearSetList(mut ctx) {
+      let mut this = ctx.this();
+      let guard = ctx.lock();
+      this.borrow_mut(&guard).set = Vec::new();
+
+      Ok(ctx.undefined().upcast())
+    }
+
     method setSetJson(mut ctx) {
       let set_json_string = ctx.argument::<JsString>(0)?.value();
 

@@ -1,5 +1,9 @@
-import { QueryTxn, MutateTxn, Mutation, Response, ResponseEvent } from '../native';
+import debug from 'debug';
+import { QueryTxn, MutateTxn, Mutation, ResponseEvent } from '../native';
+import { Response } from './response';
 import { READ_ONLY_TXN } from './errors';
+
+const log = debug('dgraph-js-native:txn');
 
 export type TxnOptions = {
   readOnly?: boolean;
@@ -27,13 +31,9 @@ export class Txn {
 
     this.txn.poll((err, event: ResponseEvent) => {
       if (err) {
-        if (err.message.indexOf('Poll Timeout Error') > -1) {
-          this.startPolling();
-          return;
-        }
-
-        // disconnect
-        throw err;
+        // only TryRecvError here
+        this.startPolling();
+        return;
       }
 
       if (this.responses[event.id]) {
@@ -41,7 +41,7 @@ export class Txn {
           this.responses[event.id][1](new Error(event.error));
         } else {
           if (event.response) {
-            this.responses[event.id][0](event.response);
+            this.responses[event.id][0](new Response(event.response));
           }
         }
 
@@ -61,13 +61,15 @@ export class Txn {
   }
 
   public async query(query: string): Promise<Response> {
+    log('query', query);
     return new Promise((resolve, reject) => {
       const id = this.txn.query(query);
       this.responses[id] = [resolve, reject];
     });
   }
 
-  public async queryWithVars(query: string, vars: { [key: string]: string }): Promise<Response> {
+  public async queryWithVars(query: string, vars: { [key: string]: any } = {}): Promise<Response> {
+    log('queryWithVars', query, vars);
     return new Promise((resolve, reject) => {
       const id = this.txn.queryWithVars(query, vars);
       this.responses[id] = [resolve, reject];
@@ -75,6 +77,7 @@ export class Txn {
   }
 
   public async mutate(mutation: Mutation): Promise<Response> {
+    log('mutate', mutation);
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -86,7 +89,34 @@ export class Txn {
     }
   }
 
+  public async upsert(query: string, mutation: Mutation): Promise<Response> {
+    log('upsert', query, mutation);
+    const txn = this.txn;
+    if (this.isMutated(txn)) {
+      return new Promise((resolve, reject) => {
+        const id = txn.upsert(query, mutation);
+        this.responses[id] = [resolve, reject];
+      });
+    } else {
+      return Promise.reject(READ_ONLY_TXN);
+    }
+  }
+
+  public async upsertWithVars(query: string, mutation: Mutation, vars: { [key: string]: any } = {}): Promise<Response> {
+    log('upsertWithVars', query, mutation, vars);
+    const txn = this.txn;
+    if (this.isMutated(txn)) {
+      return new Promise((resolve, reject) => {
+        const id = txn.upsertWithVars(query, vars, mutation);
+        this.responses[id] = [resolve, reject];
+      });
+    } else {
+      return Promise.reject(READ_ONLY_TXN);
+    }
+  }
+
   public async commit(): Promise<Response> {
+    log('commit');
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -102,6 +132,7 @@ export class Txn {
   }
 
   public async discard(): Promise<Response> {
+    log('discard');
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {

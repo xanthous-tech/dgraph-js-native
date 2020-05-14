@@ -13,7 +13,5 @@ fn main() {
     }"#;
 
     let response = txn.query(q).await.expect("query");
-
-    println!("response = {:?}", String::from_utf8(response.json).unwrap());
   })
 }

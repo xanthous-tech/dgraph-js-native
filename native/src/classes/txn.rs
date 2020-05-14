@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::string::String;
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex as StdMutex};
 use std::thread;
 
+use tokio_global::AutoRuntime;
+use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 use nanoid::nanoid;
 
 use dgraph_tonic::{LazyClient, LazyDefaultChannel, DgraphError, Mutation, Response};
@@ -13,8 +15,8 @@ use super::event::ResponseEventWrapper;
 
 pub struct QueryTxnWrapper<Q: Query> {
   pub txn: Arc<Mutex<Option<Q>>>,
-  pub response_tx: mpsc::Sender<ResponseEventWrapper>,
-  pub response_rx: Arc<Mutex<mpsc::Receiver<ResponseEventWrapper>>>,
+  pub response_tx: mpsc::UnboundedSender<ResponseEventWrapper>,
+  pub response_rx: Arc<StdMutex<mpsc::UnboundedReceiver<ResponseEventWrapper>>>,
 }
 
 impl<Q> QueryTxnWrapper<Q> where Q: Query + 'static {
@@ -26,9 +28,8 @@ impl<Q> QueryTxnWrapper<Q> where Q: Query + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-
-    thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.as_mut();
 
       let response = match txn {
@@ -36,11 +37,14 @@ impl<Q> QueryTxnWrapper<Q> where Q: Query + 'static {
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: response,
-      }).expect("send response event");
-    }));
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }
@@ -53,8 +57,8 @@ impl<Q> QueryTxnWrapper<Q> where Q: Query + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-    thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.as_mut();
 
       let response = match txn {
@@ -62,11 +66,14 @@ impl<Q> QueryTxnWrapper<Q> where Q: Query + 'static {
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: response,
-      }).expect("send response event");
-    }));
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }
@@ -81,8 +88,8 @@ impl<Q> Drop for QueryTxnWrapper<Q> where Q: Query {
 
 pub struct MutateTxnWrapper<M: Mutate> {
   pub txn: Arc<Mutex<Option<M>>>,
-  pub response_tx: mpsc::Sender<ResponseEventWrapper>,
-  pub response_rx: Arc<Mutex<mpsc::Receiver<ResponseEventWrapper>>>,
+  pub response_tx: mpsc::UnboundedSender<ResponseEventWrapper>,
+  pub response_rx: Arc<StdMutex<mpsc::UnboundedReceiver<ResponseEventWrapper>>>,
 }
 
 impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
@@ -94,8 +101,8 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-    thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.take();
 
       let response = match txn {
@@ -103,14 +110,17 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: match response {
           Ok(()) => Ok(Response { json: String::from("{\"type\": \"discard\"}").into_bytes(), ..Default::default() }),
           Err(e) => Err(e),
         },
-      }).expect("send response event");
-    }));
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }
@@ -123,8 +133,8 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-    thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.take();
 
       let response = match txn {
@@ -132,14 +142,17 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: match response {
           Ok(()) => Ok(Response { json: String::from("{\"type\": \"commit\"}").into_bytes(), ..Default::default() }),
           Err(e) => Err(e),
         },
-      }).expect("send response event");
-    }));
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }
@@ -153,7 +166,7 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
     let tx = self.response_tx.clone();
 
     thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.as_mut();
 
       let response = match txn {
@@ -161,11 +174,72 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: response,
-      }).expect("send response event");
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
     }));
+
+    resp_id
+  }
+
+  pub fn upsert(&self, query: String, mu: Mutation) -> String {
+    let txn_arc_mutex = self.txn.clone();
+    Arc::downgrade(&txn_arc_mutex);
+
+    let txn_id = nanoid!();
+    let resp_id = txn_id.clone();
+    let tx = self.response_tx.clone();
+
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
+      let txn = txn_guard.take();
+
+      let response = match txn {
+        Some(t) => t.upsert(query.clone(), mu.clone()).await,
+        None => Err(DgraphError::EmptyTxn)
+      };
+
+      match tx.send(ResponseEventWrapper {
+        resp_id: txn_id.clone(),
+        result: response,
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
+
+    resp_id
+  }
+
+  pub fn upsert_with_vars(&self, query: String, vars: HashMap<String, String>, mu: Mutation) -> String {
+    let txn_arc_mutex = self.txn.clone();
+    Arc::downgrade(&txn_arc_mutex);
+
+    let txn_id = nanoid!();
+    let resp_id = txn_id.clone();
+    let tx = self.response_tx.clone();
+
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
+      let txn = txn_guard.take();
+
+      let response = match txn {
+        Some(t) => t.upsert_with_vars(query.clone(), vars.clone(), mu.clone()).await,
+        None => Err(DgraphError::EmptyTxn)
+      };
+
+      match tx.send(ResponseEventWrapper {
+        resp_id: txn_id.clone(),
+        result: response,
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }
@@ -178,8 +252,8 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-    thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.as_mut();
 
       let response = match txn {
@@ -187,11 +261,14 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: response,
-      }).expect("send response event");
-    }));
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }
@@ -204,20 +281,25 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-    thread::spawn(move || smol::run(async {
-      let mut txn_guard = txn_arc_mutex.lock().unwrap();
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.as_mut();
 
       let response = match txn {
-        Some(t) => t.query_with_vars(query.clone(), vars.clone()).await,
+        Some(t) => {
+          t.query_with_vars(query.clone(), vars.clone()).await
+        },
         None => Err(DgraphError::EmptyTxn)
       };
 
-      tx.send(ResponseEventWrapper {
+      match tx.send(ResponseEventWrapper {
         resp_id: txn_id.clone(),
         result: response,
-      }).expect("send response event");
-    }));
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
 
     resp_id
   }

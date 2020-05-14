@@ -1,8 +1,9 @@
 use neon::prelude::*;
 
-use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TryRecvError;
 
 use crate::classes::ResponseEventWrapper;
 
@@ -10,18 +11,17 @@ use crate::js::JsResponse;
 use crate::utils::hashmap_to_jsobject;
 
 pub struct PollTask {
-  pub rx: Arc<Mutex<mpsc::Receiver<ResponseEventWrapper>>>,
+  pub rx: Arc<Mutex<mpsc::UnboundedReceiver<ResponseEventWrapper>>>,
 }
 
 impl Task for PollTask {
   type Output = ResponseEventWrapper;
-  type Error = RecvTimeoutError;
+  type Error = TryRecvError;
   type JsEvent = JsValue;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
-    let duration = Duration::from_millis(10);
-    let rx = self.rx.lock().unwrap();
-    rx.recv_timeout(duration)
+    let mut rx = self.rx.lock().unwrap();
+    rx.try_recv()
   }
 
   fn complete(self, mut ctx: TaskContext, result: Result<Self::Output, Self::Error>) -> JsResult<Self::JsEvent> {
@@ -56,8 +56,7 @@ impl Task for PollTask {
           Ok(obj.upcast())
         },
       },
-      Err(RecvTimeoutError::Timeout) => ctx.throw_error(format!("Poll Timeout Error - {:?}", RecvTimeoutError::Timeout)),
-      Err(RecvTimeoutError::Disconnected) => ctx.throw_error(format!("Channel Disconnect Error - {:?}", RecvTimeoutError::Disconnected)),
+      Err(e) => ctx.throw_error(format!("PollTask Error - {:?}", e)),
     }
   }
 }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::string::String;
 use std::sync::{Arc, Mutex as StdMutex};
-use std::thread;
 
 use tokio_global::AutoRuntime;
 use tokio::sync::Mutex;
@@ -165,7 +164,7 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
     let resp_id = txn_id.clone();
     let tx = self.response_tx.clone();
 
-    thread::spawn(move || smol::run(async {
+    async move {
       let mut txn_guard = txn_arc_mutex.lock().await;
       let txn = txn_guard.as_mut();
 
@@ -181,7 +180,7 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
         Ok(()) => (),
         Err(_) => ()
       }
-    }));
+    }.spawn();
 
     resp_id
   }

@@ -7,6 +7,7 @@ pub struct DgraphClientWrapper {
 
 impl DgraphClientWrapper {
   pub fn alter(&self, op: Operation) -> Payload {
+    // TODO: consider making this async using tokio runtime
     smol::run(async {
       self.client.alter(op).await.expect("client alter failed")
     })

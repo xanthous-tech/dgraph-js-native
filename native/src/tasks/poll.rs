@@ -19,7 +19,7 @@ impl Task for PollTask {
   type JsEvent = JsValue;
 
   fn perform(&self) -> Result<Self::Output, Self::Error> {
-    let duration = Duration::from_millis(50);
+    let duration = Duration::from_millis(10);
     let rx = self.rx.lock().unwrap();
     rx.recv_timeout(duration)
   }

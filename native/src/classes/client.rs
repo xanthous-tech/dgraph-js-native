@@ -6,9 +6,11 @@ pub struct DgraphClientWrapper {
 }
 
 impl DgraphClientWrapper {
-  // pub fn alter(&self, op: Operation) -> Payload {
-  //   self.client.alter(op).expect("client alter failed")
-  // }
+  pub fn alter(&self, op: Operation) -> Payload {
+    smol::run(async {
+      self.client.alter(op).await.expect("client alter failed")
+    })
+  }
 
   pub fn new_read_only_txn(&self) -> ReadOnlyTxn<LazyClient<LazyDefaultChannel>> {
     self.client.new_read_only_txn()

@@ -27,3 +27,4 @@ dgraph-tonic = { git = "https://github.com/xanthous-tech/dgraph-tonic", branch =
 # dgraph-tonic = { version = "0.5.1", features = ["sync"] }
 # tokio = { version = "0.2", features = ["macros"] }
 smol = { version = "0.1.4", features = ["tokio02"] }
+nanoid = "0.3.0"

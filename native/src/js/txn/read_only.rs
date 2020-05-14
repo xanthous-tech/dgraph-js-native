@@ -1,10 +1,11 @@
 use neon::prelude::*;
 
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
+use std::sync::{Arc, RwLock, Mutex};
 
 use crate::js::client::JsDgraphClient;
 use crate::classes::ReadOnlyQueryTxnWrapper;
-use crate::tasks::ResponseTask;
+use crate::tasks::PollTask;
 use crate::utils::jsobject_to_hashmap;
 
 declare_types! {
@@ -14,72 +15,53 @@ declare_types! {
       let guard = ctx.lock();
       let client = client.borrow(&guard);
 
-      Ok(ReadOnlyQueryTxnWrapper { txn: Arc::new(Mutex::new(Some(client.new_read_only_txn()))) })
+      let (tx, rx) = mpsc::channel();
+
+      Ok(ReadOnlyQueryTxnWrapper {
+        txn: Arc::new(Mutex::new(Some(client.new_read_only_txn()))),
+        response_tx: tx,
+        response_rx: Arc::new(Mutex::new(rx)),
+      })
     }
 
     method query(mut ctx) {
       let query = ctx.argument::<JsString>(0)?.value();
-      let cb = ctx.argument::<JsFunction>(1)?;
 
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn_arc_mutex = this.borrow(&guard).txn.clone();
-      Arc::downgrade(&txn_arc_mutex);
+      let txn_id = this.borrow(&guard).query(query.clone());
 
-      smol::run(async {
-        use dgraph_tonic::Query;
-        use dgraph_tonic::DgraphError;
-
-        let mut mutex_guard = txn_arc_mutex.lock().unwrap();
-        let txn = mutex_guard.as_mut();
-
-        let response = match txn {
-          Some(t) => t.query(query.clone()).await,
-          None => Err(DgraphError::EmptyTxn)
-        };
-
-        let task = ResponseTask {
-          response: Mutex::new(Some(response)),
-        };
-
-        task.schedule(cb);
-      });
-
-      Ok(ctx.undefined().upcast())
+      Ok(ctx.string(txn_id).upcast())
     }
 
     method queryWithVars(mut ctx) {
       let query = ctx.argument::<JsString>(0)?.value();
       let vars_obj = ctx.argument::<JsObject>(1)?;
-      let cb = ctx.argument::<JsFunction>(2)?;
 
       let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
 
       let this = ctx.this();
       let guard = ctx.lock();
 
-      let txn_arc_mutex = this.borrow(&guard).txn.clone();
-      Arc::downgrade(&txn_arc_mutex);
+      let txn_id = this.borrow(&guard).query_with_vars(query.clone(), vars.clone());
 
-      smol::run(async {
-        use dgraph_tonic::Query;
-        use dgraph_tonic::DgraphError;
+      Ok(ctx.string(txn_id).upcast())
+    }
 
-        let mut mutex_guard = txn_arc_mutex.lock().unwrap();
-        let txn = mutex_guard.as_mut();
+    method poll(mut ctx) {
+      let cb = ctx.argument::<JsFunction>(0)?;
+      let this = ctx.this();
+      let guard = ctx.lock();
 
-        let response = match txn {
-          Some(t) => t.query_with_vars(query.clone(), vars.clone()).await,
-          None => Err(DgraphError::EmptyTxn)
-        };
+      let rx = this.borrow(&guard).response_rx.clone();
+      Arc::downgrade(&rx);
 
-        let task = ResponseTask {
-          response: Mutex::new(Some(response)),
-        };
+      let task = PollTask {
+        rx,
+      };
 
-        task.schedule(cb);
-      });
+      task.schedule(cb);
 
       Ok(ctx.undefined().upcast())
     }

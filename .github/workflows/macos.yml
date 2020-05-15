@@ -31,6 +31,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: install NPM dependencies and build native binary
       run: yarn
+    - name: remove native built artifact before publishing
+      run: rm native/index.node && rm native/artifacts.json && rm -rf native/target
     - name: Package native binary and upload to github
       run: npm run upload-binary
       env:

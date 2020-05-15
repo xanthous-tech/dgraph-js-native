@@ -1,5 +1,5 @@
 import debug from 'debug';
-import { QueryTxn, MutateTxn, Mutation, ResponseEvent } from '../native';
+import { QueryTxn, MutateTxn, Mutation, ResponseEvent, Response as NativeResponse } from '../native';
 import { Response } from './response';
 import { READ_ONLY_TXN } from './errors';
 
@@ -38,7 +38,12 @@ export class Txn {
 
       if (this.responses[event.id]) {
         if (event.error) {
-          this.responses[event.id][1](new Error(event.error));
+          if (event.error.indexOf('EmptyTxn') < 0) {
+            this.responses[event.id][1](new Error(event.error));
+          } else {
+            log('empty txn, swallowing');
+            this.responses[event.id][0](new Response(new NativeResponse(JSON.stringify({ empty: true }), {})));
+          }
         } else {
           if (event.response) {
             this.responses[event.id][0](new Response(event.response));
@@ -89,12 +94,12 @@ export class Txn {
     }
   }
 
-  public async upsert(query: string, mutation: Mutation): Promise<Response> {
+  public async upsert(query: string, mutation: Mutation, commitNow?: boolean): Promise<Response> {
     log('upsert', query, mutation);
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
-        const id = txn.upsert(query, mutation);
+        const id = commitNow ? txn.upsertAndCommitNow(query, mutation) : txn.upsert(query, mutation);
         this.responses[id] = [resolve, reject];
       });
     } else {
@@ -102,12 +107,12 @@ export class Txn {
     }
   }
 
-  public async upsertWithVars(query: string, mutation: Mutation, vars: { [key: string]: any } = {}): Promise<Response> {
+  public async upsertWithVars(query: string, mutation: Mutation, vars: { [key: string]: any } = {}, commitNow?: boolean): Promise<Response> {
     log('upsertWithVars', query, mutation, vars);
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
-        const id = txn.upsertWithVars(query, vars, mutation);
+        const id = commitNow ? txn.upsertWithVarsAndCommitNow(query, vars, mutation) : txn.upsertWithVars(query, vars, mutation);
         this.responses[id] = [resolve, reject];
       });
     } else {

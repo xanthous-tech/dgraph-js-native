@@ -1,5 +1,5 @@
-use dgraph_tonic::{Operation, Payload, LazyClient, LazyDefaultChannel};
-use dgraph_tonic::{Client, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
+use dgraph_tonic::{Operation, Payload};
+use dgraph_tonic::{Client, TxnReadOnly, TxnBestEffort, TxnMutated};
 
 pub struct DgraphClientWrapper {
   pub client: Client,
@@ -13,15 +13,15 @@ impl DgraphClientWrapper {
     })
   }
 
-  pub fn new_read_only_txn(&self) -> ReadOnlyTxn<LazyClient<LazyDefaultChannel>> {
+  pub fn new_read_only_txn(&self) -> TxnReadOnly {
     self.client.new_read_only_txn()
   }
 
-  pub fn new_best_effort_txn(&self) -> BestEffortTxn<LazyClient<LazyDefaultChannel>> {
+  pub fn new_best_effort_txn(&self) -> TxnBestEffort {
     self.client.new_best_effort_txn()
   }
 
-  pub fn new_mutated_txn(&self) ->  MutatedTxn<LazyClient<LazyDefaultChannel>> {
+  pub fn new_mutated_txn(&self) ->  TxnMutated {
     self.client.new_mutated_txn()
   }
 }

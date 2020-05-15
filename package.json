@@ -1,6 +1,6 @@
 {
   "name": "dgraph-js-native",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "dGraph JS Native Client",
   "main": "lib/index.js",
   "author": "Simon Liang <simon@x-tech.io>",

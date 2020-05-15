@@ -23,7 +23,7 @@ neon = "0.4.0"
 serde = "1.0.106"
 serde_derive = "1.0.106"
 serde_json = "1.0.52"
-dgraph-tonic = { git = "https://github.com/xanthous-tech/dgraph-tonic", branch = "expose-traits" }
+dgraph-tonic = { git = "https://github.com/xanthous-tech/dgraph-tonic", branch = "upsert-commit" }
 tokio = { version = "0.2", features = ["macros", "sync"] }
 smol = { version = "0.1.4", features = ["tokio02"] }
 tokio-global = "0.4.0"

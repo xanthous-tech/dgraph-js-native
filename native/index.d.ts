@@ -6,6 +6,7 @@ declare namespace DgraphJsNative {
   }
 
   export class Response {
+    constructor(json: string, uidsMap: { [key: string]: string });
     getJson(): any;
     getUidsMap(): { [key: string]: string };
   }
@@ -30,7 +31,9 @@ declare namespace DgraphJsNative {
 
   export interface MutateTxn extends QueryTxn {
     upsert(query: string, mutation: Mutation): string;
+    upsertAndCommitNow(query: string, mutation: Mutation): string;
     upsertWithVars(query: string, vars: { [key: string]: any }, mutation: Mutation): string;
+    upsertWithVarsAndCommitNow(query: string, vars: { [key: string]: any }, mutation: Mutation): string;
     mutate(mutation: Mutation): string;
     commit(): string;
     discard(): string;

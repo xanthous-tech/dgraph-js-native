@@ -7,8 +7,8 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use nanoid::nanoid;
 
-use dgraph_tonic::{LazyClient, LazyDefaultChannel, DgraphError, Mutation, Response};
-use dgraph_tonic::{Query, Mutate, ReadOnlyTxn, BestEffortTxn, MutatedTxn};
+use dgraph_tonic::{DgraphError, Mutation, Response};
+use dgraph_tonic::{Query, Mutate, TxnReadOnly, TxnBestEffort, TxnMutated};
 
 use super::event::ResponseEventWrapper;
 
@@ -195,10 +195,39 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
 
     async move {
       let mut txn_guard = txn_arc_mutex.lock().await;
-      let txn = txn_guard.take();
+      let txn = txn_guard.as_mut();
 
       let response = match txn {
         Some(t) => t.upsert(query.clone(), mu.clone()).await,
+        None => Err(DgraphError::EmptyTxn)
+      };
+
+      match tx.send(ResponseEventWrapper {
+        resp_id: txn_id.clone(),
+        result: response,
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
+
+    resp_id
+  }
+
+  pub fn upsert_and_commit_now(&self, query: String, mu: Mutation) -> String {
+    let txn_arc_mutex = self.txn.clone();
+    Arc::downgrade(&txn_arc_mutex);
+
+    let txn_id = nanoid!();
+    let resp_id = txn_id.clone();
+    let tx = self.response_tx.clone();
+
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
+      let txn = txn_guard.take();
+
+      let response = match txn {
+        Some(t) => t.upsert_and_commit_now(query.clone(), mu.clone()).await,
         None => Err(DgraphError::EmptyTxn)
       };
 
@@ -224,10 +253,39 @@ impl<M> MutateTxnWrapper<M> where M: Mutate + 'static {
 
     async move {
       let mut txn_guard = txn_arc_mutex.lock().await;
-      let txn = txn_guard.take();
+      let txn = txn_guard.as_mut();
 
       let response = match txn {
         Some(t) => t.upsert_with_vars(query.clone(), vars.clone(), mu.clone()).await,
+        None => Err(DgraphError::EmptyTxn)
+      };
+
+      match tx.send(ResponseEventWrapper {
+        resp_id: txn_id.clone(),
+        result: response,
+      }) {
+        Ok(()) => (),
+        Err(_) => ()
+      }
+    }.spawn();
+
+    resp_id
+  }
+
+  pub fn upsert_with_vars_and_commit_now(&self, query: String, vars: HashMap<String, String>, mu: Mutation) -> String {
+    let txn_arc_mutex = self.txn.clone();
+    Arc::downgrade(&txn_arc_mutex);
+
+    let txn_id = nanoid!();
+    let resp_id = txn_id.clone();
+    let tx = self.response_tx.clone();
+
+    async move {
+      let mut txn_guard = txn_arc_mutex.lock().await;
+      let txn = txn_guard.take();
+
+      let response = match txn {
+        Some(t) => t.upsert_with_vars_and_commit_now(query.clone(), vars.clone(), mu.clone()).await,
         None => Err(DgraphError::EmptyTxn)
       };
 
@@ -313,6 +371,6 @@ impl<M> Drop for MutateTxnWrapper<M> where M: Mutate {
 
 // TODO: this currently only works with un-authenticated channel
 // need concrete type to bypass neon declare_types macro
-pub type ReadOnlyQueryTxnWrapper = QueryTxnWrapper<ReadOnlyTxn<LazyClient<LazyDefaultChannel>>>;
-pub type BestEffortQueryTxnWrapper = QueryTxnWrapper<BestEffortTxn<LazyClient<LazyDefaultChannel>>>;
-pub type MutatedTxnWrapper = MutateTxnWrapper<MutatedTxn<LazyClient<LazyDefaultChannel>>>;
+pub type ReadOnlyQueryTxnWrapper = QueryTxnWrapper<TxnReadOnly>;
+pub type BestEffortQueryTxnWrapper = QueryTxnWrapper<TxnBestEffort>;
+pub type MutatedTxnWrapper = MutateTxnWrapper<TxnMutated>;

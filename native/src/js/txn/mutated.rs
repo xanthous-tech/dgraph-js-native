@@ -72,6 +72,20 @@ declare_types! {
       Ok(ctx.string(txn_id).upcast())
     }
 
+    method upsertAndCommitNow(mut ctx) {
+      let query = ctx.argument::<JsString>(0)?.value();
+      let mutation = ctx.argument::<JsMutation>(1)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let mu = mutation.borrow(&guard).clone();
+
+      let txn_id = this.borrow(&guard).upsert_and_commit_now(query.clone(), mu.clone());
+
+      Ok(ctx.string(txn_id).upcast())
+    }
+
     method upsertWithVars(mut ctx) {
       let query = ctx.argument::<JsString>(0)?.value();
 
@@ -86,6 +100,24 @@ declare_types! {
       let mu = mutation.borrow(&guard).clone();
 
       let txn_id = this.borrow(&guard).upsert_with_vars(query.clone(), vars.clone(), mu.clone());
+
+      Ok(ctx.string(txn_id).upcast())
+    }
+
+    method upsertWithVarsAndCommitNow(mut ctx) {
+      let query = ctx.argument::<JsString>(0)?.value();
+
+      let vars_obj = ctx.argument::<JsObject>(1)?;
+      let vars = jsobject_to_hashmap(&mut ctx, vars_obj).unwrap();
+
+      let mutation = ctx.argument::<JsMutation>(2)?;
+
+      let this = ctx.this();
+      let guard = ctx.lock();
+
+      let mu = mutation.borrow(&guard).clone();
+
+      let txn_id = this.borrow(&guard).upsert_with_vars_and_commit_now(query.clone(), vars.clone(), mu.clone());
 
       Ok(ctx.string(txn_id).upcast())
     }

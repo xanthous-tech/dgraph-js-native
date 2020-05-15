@@ -33,6 +33,7 @@
     "node-pre-gyp": "node-pre-gyp",
     "build": "neon build",
     "package": "npm run node-pre-gyp -- package",
+    "clear-artifact": "rimraf native/target && rimraf native/artifacts.json",
     "upload-binary": "npm run package && node-pre-gyp-github publish"
   },
   "dependencies": {
@@ -50,6 +51,7 @@
     "neon-cli": "^0.4.0",
     "node-pre-gyp-github": "^1.4.3",
     "prettier": "^2.0.5",
+    "rimraf": "^3.0.2",
     "ts-node": "^8.10.1",
     "typescript": "^3.8.3"
   },

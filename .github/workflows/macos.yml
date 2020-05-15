@@ -32,7 +32,7 @@ jobs:
     - name: install NPM dependencies and build native binary
       run: yarn
     - name: remove native built artifact before publishing
-      run: rm native/artifacts.json && rm -rf native/target
+      run: npm run clear-artifact
     - name: Package native binary and upload to github
       run: npm run upload-binary
       env:

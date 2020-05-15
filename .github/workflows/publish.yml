@@ -9,10 +9,8 @@ on:
       - v*
 
 jobs:
-  build:
-
+  publish:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Use Node.js 12.x

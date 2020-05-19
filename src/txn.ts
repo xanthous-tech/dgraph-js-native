@@ -1,7 +1,7 @@
 import debug from 'debug';
 import { QueryTxn, MutateTxn, Mutation, ResponseEvent, Response as NativeResponse } from '../native';
 import { Response } from './response';
-import { READ_ONLY_TXN } from './errors';
+import { READ_ONLY_TXN, ALREADY_FINISHED } from './errors';
 
 const log = debug('dgraph-js-native:txn');
 
@@ -67,6 +67,9 @@ export class Txn {
 
   public async query(query: string): Promise<Response> {
     log('query', query);
+
+    await this.checkIsFinished();
+
     return new Promise((resolve, reject) => {
       const id = this.txn.query(query);
       this.responses[id] = [resolve, reject];
@@ -75,6 +78,9 @@ export class Txn {
 
   public async queryWithVars(query: string, vars: { [key: string]: any } = {}): Promise<Response> {
     log('queryWithVars', query, vars);
+
+    await this.checkIsFinished();
+
     return new Promise((resolve, reject) => {
       const id = this.txn.queryWithVars(query, vars);
       this.responses[id] = [resolve, reject];
@@ -83,6 +89,9 @@ export class Txn {
 
   public async mutate(mutation: Mutation): Promise<Response> {
     log('mutate', mutation);
+
+    await this.checkIsFinished();
+
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -96,6 +105,9 @@ export class Txn {
 
   public async upsert(query: string, mutation: Mutation, commitNow?: boolean): Promise<Response> {
     log('upsert', query, mutation);
+
+    await this.checkIsFinished();
+
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -109,6 +121,9 @@ export class Txn {
 
   public async upsertWithVars(query: string, mutation: Mutation, vars: { [key: string]: any } = {}, commitNow?: boolean): Promise<Response> {
     log('upsertWithVars', query, mutation, vars);
+
+    await this.checkIsFinished();
+
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -122,6 +137,9 @@ export class Txn {
 
   public async commit(): Promise<Response> {
     log('commit');
+
+    await this.checkIsFinished();
+
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -138,6 +156,9 @@ export class Txn {
 
   public async discard(): Promise<Response> {
     log('discard');
+
+    await this.checkIsFinished();
+
     const txn = this.txn;
     if (this.isMutated(txn)) {
       return new Promise((resolve, reject) => {
@@ -150,6 +171,13 @@ export class Txn {
     } else {
       return Promise.reject(READ_ONLY_TXN);
     }
+  }
+
+  private checkIsFinished(): Promise<void> {
+    if (this.finished) {
+      return Promise.reject(ALREADY_FINISHED);
+    }
+    return Promise.resolve();
   }
 
   private isMutated(txn: QueryTxn | MutateTxn): txn is MutateTxn {

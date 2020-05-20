@@ -5,6 +5,8 @@ import { READ_ONLY_TXN, ALREADY_FINISHED } from './errors';
 
 const log = debug('dgraph-js-native:txn');
 
+const POLL_TIMEOUT = Number(process.env.DGRAPH_JS_NATIVE_POLL_TIMEOUT || 5000);
+
 export type TxnOptions = {
   readOnly?: boolean;
   bestEffort?: boolean;
@@ -15,13 +17,12 @@ export class Txn {
   private responses: { [key: string]: [(resp: Response) => void, (err: Error) => void] };
   private finished: boolean;
   private immediate: NodeJS.Immediate;
+  private emptyTimestamp: number;
 
   constructor(txn: QueryTxn) {
     this.txn = txn;
     this.responses = {};
     this.finished = false;
-
-    this.startPolling();
   }
 
   private loop(): void {
@@ -58,9 +59,19 @@ export class Txn {
   }
 
   private startPolling(): void {
+    if (Object.keys(this.responses).length > 0) {
+      this.emptyTimestamp = Date.now();
+    }
+
+    if (Date.now() - this.emptyTimestamp >= POLL_TIMEOUT) {
+      log(`no more new responses come in after ${POLL_TIMEOUT}ms, stopping the loop`);
+      this.finished = true;
+    }
+
     if (!this.finished) {
       this.immediate = setImmediate(this.loop.bind(this));
     } else {
+      log('stopping txn poll');
       clearImmediate(this.immediate);
     }
   }
@@ -176,8 +187,14 @@ export class Txn {
   private checkIsFinished(): Promise<void> {
     if (this.finished) {
       return Promise.reject(ALREADY_FINISHED);
+    } else {
+      if (!this.immediate) {
+        log('starting to poll responses');
+        this.emptyTimestamp = Date.now();
+        this.startPolling();
+      }
+      return Promise.resolve();
     }
-    return Promise.resolve();
   }
 
   private isMutated(txn: QueryTxn | MutateTxn): txn is MutateTxn {

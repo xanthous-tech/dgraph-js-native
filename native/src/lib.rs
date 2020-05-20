@@ -15,7 +15,7 @@ register_module!(mut ctx, {
     RT = Some(Runtime::default());
     let _runner = std::thread::spawn(|| {
       Runtime::run();
-     });
+    });
   }
 
   ctx.export_class::<js::JsResponse>("Response")?;
